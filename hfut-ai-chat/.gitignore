@@ -1,0 +1,29 @@
+# 依赖
+node_modules/
+server/node_modules/
+web/node_modules/
+
+# 构建产物
+dist/
+web/dist/
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 日志
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 环境变量（含密钥，绝不能提交）
+.env
+.env.local
+.env.*.local
+server/.env
+server/.env.local
+
+# IDE
+.idea/
+*.swp
