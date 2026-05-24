@@ -1,0 +1,25 @@
+---
+description: 前端目录与 API 调用规范
+globs: frontend/src/**
+alwaysApply: false
+---
+
+# 前端规范（frontend/src）
+
+## 目录
+
+- `pages/` — 页面级组件（LoginPage、ChatPage）
+- `components/ui/` — shadcn 基础组件
+- `components/chat/` — 聊天业务组件
+- `lib/` — api 封装、sse、工具函数
+- `store/` — Redux
+
+## API 调用
+
+- 所有请求走 `lib/` 封装，组件内禁止硬编码 `/api/...` URL
+- 统一使用 `/api` 代理；Bearer token 由 store 注入
+- SSE 使用 fetch + ReadableStream 携带 Authorization（见 README）
+
+## 新增后端接口时
+
+同步在 `frontend/src/lib/` 添加对应请求函数，并保持 camelCase 字段命名。

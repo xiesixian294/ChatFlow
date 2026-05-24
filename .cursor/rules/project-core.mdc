@@ -1,0 +1,23 @@
+---
+description: 项目总规范，修改代码前遵循 PROJECT_RULES.md
+alwaysApply: true
+---
+
+# react-ai 项目规范
+
+完整细则见仓库根目录 **PROJECT_RULES.md**。编写或审查代码时必须遵守：
+
+## 核心原则
+
+- 分层：routes（HTTP）→ services（业务）→ db/query（数据）
+- 安全默认：除 `/api/health`、`/api/auth/register`、`/api/auth/login` 外，所有 API 必须鉴权
+- 用户资源：SQL 必须带 `user_id = ?`，绑定 `req.user.id`，禁止信任客户端 userId
+
+## 修改后自检
+
+- 新路由已在 `backend/src/index.js` 挂载，路径以 `/api` 开头
+- 数据库只通过 `backend/src/db/index.js` 的 `query()` 访问
+- 表结构变更已更新 `db/init.js` 与 `.env.example`
+- 新公开 API 已在 README 接口表说明
+
+不确定文件应放哪一层时，先查 PROJECT_RULES.md 第 3.2 节决策树。

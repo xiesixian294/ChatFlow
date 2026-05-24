@@ -1,0 +1,49 @@
+---
+description: 后端 Express/MySQL/API 安全规范
+globs: backend/src/**
+alwaysApply: false
+---
+
+# 后端规范（backend/src）
+
+## 文件放置
+
+| 目录 | 职责 |
+| --- | --- |
+| `routes/` | 参数校验、HTTP 状态码、调用 service/query |
+| `services/` | 多步业务、LLM、文件解析；入参显式传 userId，不用 req.user |
+| `middleware/` | authRequired、upload；禁止业务 SQL |
+| `db/index.js` | 唯一连接池与 `query()` |
+| `db/init.js` | 仅建表/迁移 |
+| `config/` | 环境变量常量 |
+| `utils/` | 纯函数，无 req/res |
+
+## MySQL
+
+```js
+// ✅ 唯一入口
+import { query } from '../db/index.js'
+await query('SELECT id FROM conversations WHERE id = ? AND user_id = ?', [id, req.user.id])
+
+// ❌ 禁止：字符串拼接 SQL、在 routes 外新建 createPool
+```
+
+## API 鉴权
+
+```js
+// 整模块私有
+router.use(authRequired)
+
+// 或单路由
+router.get('/me', authRequired, handler)
+```
+
+- REST：`Authorization: Bearer <token>`
+- SSE 备用：`?token=`（见 middleware/auth.js）
+- 错误格式：`{ message: '中文说明' }`；404 用于资源不存在或非本人
+
+## 禁止
+
+- 在 routes 直接调用 LLM SDK（走 services/llm.js）
+- 在 middleware/utils 复制 JWT 解析
+- 响应中返回密码哈希、JWT 密钥、完整 extracted_text

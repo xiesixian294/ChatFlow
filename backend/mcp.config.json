@@ -1,0 +1,24 @@
+{
+  "$comment": "MCP Server 配置。command/args 用于本地子进程启动；env 字符串中 ${XXX} 会从 process.env 替换。修改后会被 nodemon 监听并自动重启 backend。",
+  "mcpServers": {
+    "tavily": {
+      "enabled": true,
+      "description": "Tavily 联网搜索（tavily-search / tavily-extract 等）",
+      "command": "node",
+      "args": ["node_modules/tavily-mcp/build/index.js"],
+      "env": {
+        "TAVILY_API_KEY": "${TAVILY_API_KEY}",
+        "DEFAULT_PARAMETERS": "{\"max_results\":5,\"search_depth\":\"basic\"}"
+      }
+    },
+    "memory": {
+      "enabled": true,
+      "description": "基于知识图谱的长期记忆：记住用户偏好、人物关系、历史结论等，跨对话可调用",
+      "command": "node",
+      "args": ["node_modules/@modelcontextprotocol/server-memory/dist/index.js"],
+      "env": {
+        "MEMORY_FILE_PATH": "./data/memory.jsonl"
+      }
+    }
+  }
+}

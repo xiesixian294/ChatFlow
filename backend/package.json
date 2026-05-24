@@ -1,0 +1,30 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "AI Chat backend (Express + MySQL + JWT + SSE)",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "db:init": "node src/db/init.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@modelcontextprotocol/server-memory": "^2026.1.26",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "jsonwebtoken": "^9.0.2",
+    "mammoth": "^1.9.0",
+    "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.11.3",
+    "pdf-parse": "^1.1.1",
+    "pinyin-pro": "^3.28.1",
+    "tavily-mcp": "^0.2.19"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.7"
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "watch": ["src", ".env", "mcp.config.json"],
+  "ext": "js,mjs,json,env",
+  "ignore": ["uploads/**", "node_modules/**"]
+}
