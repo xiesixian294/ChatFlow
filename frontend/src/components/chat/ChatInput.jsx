@@ -1,8 +1,9 @@
 import { useRef, useEffect } from 'react'
-import { ArrowUp, Square } from 'lucide-react'
+import { ArrowUp, Square, Globe } from 'lucide-react'
 
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import FileUploadButton from '@/components/chat/FileUploadButton'
 import AttachmentChips from '@/components/chat/AttachmentChips'
 import { MAX_ATTACHMENTS } from '@/lib/files'
@@ -13,6 +14,8 @@ export default function ChatInput({
   onSend,
   onStop,
   sending,
+  webSearchEnabled,
+  onWebSearchChange,
   attachments,
   onRemoveAttachment,
   onRetryAttachment,
@@ -57,6 +60,26 @@ export default function ChatInput({
             disabled={sending}
             maxReached={attachments.length >= MAX_ATTACHMENTS}
           />
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className={cn(
+              'shrink-0',
+              webSearchEnabled &&
+                'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary'
+            )}
+            disabled={sending}
+            title={
+              webSearchEnabled
+                ? '联网搜索已开启（点击关闭）'
+                : '联网搜索已关闭（点击开启）'
+            }
+            aria-pressed={webSearchEnabled}
+            onClick={() => onWebSearchChange(!webSearchEnabled)}
+          >
+            <Globe />
+          </Button>
           <Textarea
             ref={ref}
             rows={1}

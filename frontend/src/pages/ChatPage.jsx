@@ -22,6 +22,7 @@ const DEFAULT_CONV_STATE = {
   sending: false,
   input: '',
   attachments: [],
+  webSearchEnabled: false,
 }
 
 function truncateTitle(text) {
@@ -87,7 +88,7 @@ export default function ChatPage() {
   }, [])
 
   const activeState = getConvState(convState, activeId)
-  const { messages, sending, input, attachments } = activeState
+  const { messages, sending, input, attachments, webSearchEnabled } = activeState
 
   const streamingIds = useMemo(
     () =>
@@ -457,6 +458,7 @@ export default function ChatPage() {
       originalName: a.name,
       charCount: a.charCount,
     }))
+    const useWebSearch = getConvState(convStateRef.current, convId).webSearchEnabled
 
     updateConvState(convId, {
       input: '',
@@ -478,6 +480,9 @@ export default function ChatPage() {
     streamRefs.current.set(convId, controller)
 
     let url = `/api/chat/stream?conversationId=${convId}&content=${encodeURIComponent(content)}`
+    if (useWebSearch) {
+      url += '&webSearch=1'
+    }
     if (attachmentIds.length) {
       url += `&attachmentIds=${attachmentIds.join(',')}`
     }
@@ -544,6 +549,10 @@ export default function ChatPage() {
               onSend={handleSend}
               onStop={handleStop}
               sending={sending}
+              webSearchEnabled={webSearchEnabled}
+              onWebSearchChange={(enabled) =>
+                activeId && updateConvState(activeId, { webSearchEnabled: enabled })
+              }
               attachments={attachments}
               onRemoveAttachment={handleRemoveAttachment}
               onRetryAttachment={handleRetryAttachment}

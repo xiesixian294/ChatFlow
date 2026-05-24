@@ -58,7 +58,17 @@ export const localHandlers = {
   get_current_time: getCurrentTime,
 }
 
+/** MCP 中负责联网搜索的 server 名，与 mcp.config.json 键名一致 */
+export const WEB_SEARCH_SERVER = 'tavily'
+
+function isWebSearchTool(exposedName) {
+  return exposedName.startsWith(`${WEB_SEARCH_SERVER}__`)
+}
+
 /** 每轮 LLM 请求都重新聚合：本地优先，MCP 工具追加在后 */
-export function buildToolSchemas() {
-  return [...LOCAL_SCHEMAS, ...getMcpToolSchemas()]
+export function buildToolSchemas({ webSearch = false } = {}) {
+  const mcpTools = getMcpToolSchemas().filter(
+    (t) => webSearch || !isWebSearchTool(t.function.name)
+  )
+  return [...LOCAL_SCHEMAS, ...mcpTools]
 }

@@ -24,13 +24,24 @@ const MAX_TOOL_ROUNDS = 5
 
 const router = Router()
 
-const SYSTEM_PROMPT = `你是一个有帮助的中文 AI 助手，回答简洁、清晰。
+function parseWebSearchFlag(raw) {
+  if (raw == null || raw === '') return false
+  const s = String(raw).toLowerCase()
+  return s === '1' || s === 'true' || s === 'yes'
+}
+
+function buildSystemPrompt(webSearch) {
+  const webSearchRule = webSearch
+    ? '- 需要最新信息（新闻、行情、近期发布、未训练涵盖的内容）时，调用 tavily 系列工具联网检索，**不要凭训练数据猜测**。'
+    : '- **本轮对话未开启联网搜索**：不要调用 tavily 系列工具。若用户询问强依赖实时网络信息的问题，请说明需要用户开启联网搜索，并基于已有知识尽可能回答。'
+
+  return `你是一个有帮助的中文 AI 助手，回答简洁、清晰。
 
 工具使用约定（重要）：
 - 涉及「今天」「现在」「最近 N 天」「本周/本月」「几号」「星期几」等时间词，且你不确定真实当前时间时，先调用 get_current_time 拿到准确时间，再决定下一步（如配合联网搜索查询具体日期的事件）。
 - 用户主动透露个人信息（姓名、职业、爱好、长期目标、对话偏好）时，调用 memory__create_entities 或 memory__add_observations 把要点存下来；不要复述「已记住」，自然继续对话即可。
 - 当用户问「你还记得我吗」「我之前说过什么」「我叫什么」等暗示历史上下文的问题时，先调用 memory__search_nodes 检索，再基于结果作答；找不到就如实说还不了解。
-- 需要最新信息（新闻、行情、近期发布、未训练涵盖的内容）时，调用 tavily 系列工具联网检索，**不要凭训练数据猜测**。
+${webSearchRule}
 - 工具调用失败时，用自然语言告知用户失败原因（如「搜索接口不可用」），不要暴露技术错误细节。
 
 输出格式要求（重要）：
@@ -44,6 +55,7 @@ const SYSTEM_PROMPT = `你是一个有帮助的中文 AI 助手，回答简洁�
 - 禁止用 Tab、纯空格或制表符对齐来模拟表格。
 - 代码使用三个反引号围栏，并标注语言。
 - 数学公式使用 $...$ 或 $$...$$。`
+}
 
 const TITLE_MAX = 30
 
@@ -89,11 +101,12 @@ router.post(
 )
 
 // SSE 流式聊天
-// GET /api/chat/stream?conversationId=xx&content=xx&token=xx
+// GET /api/chat/stream?conversationId=xx&content=xx&webSearch=1&token=xx
 router.get('/stream', authRequired, ah(async (req, res) => {
   const conversationId = Number(req.query.conversationId)
   const content = (req.query.content || '').toString().trim()
   const attachmentIds = parseAttachmentIds(req.query.attachmentIds)
+  const webSearch = parseWebSearchFlag(req.query.webSearch)
 
   if (!conversationId) throw badRequest('参数缺失')
   if (!content && !attachmentIds.length) throw badRequest('请输入消息或上传附件')
@@ -180,7 +193,7 @@ router.get('/stream', authRequired, ah(async (req, res) => {
     messages = await buildChatContext({
       conversationId,
       assistantMessageId,
-      systemPrompt: SYSTEM_PROMPT,
+      systemPrompt: buildSystemPrompt(webSearch),
       signal: controller.signal,
     })
   } catch (err) {
@@ -229,7 +242,7 @@ router.get('/stream', authRequired, ah(async (req, res) => {
       for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
         const { text: roundText, toolCalls, finishReason } = await streamLLM({
           messages: currentMessages,
-          tools: buildToolSchemas(),
+          tools: buildToolSchemas({ webSearch }),
           signal: controller.signal,
           onDelta: (delta) => {
             assistantText += delta
