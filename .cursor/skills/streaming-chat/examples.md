@@ -90,7 +90,9 @@ export default function StreamChat({ conversationId }) {
   }
 
   // ---------- 发送 ----------
+  //用户点击发送按钮的时候会触发这个函数
   async function handleSend() {
+    //输入框的内容
     const content = input.trim()
     if (!content || sending) return
 

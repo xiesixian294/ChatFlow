@@ -1,6 +1,9 @@
 import { useMemo } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import remarkMath from 'remark-math'
+import rehypeKatex from 'rehype-katex'
+import 'katex/dist/katex.min.css'
 import { FileText } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -168,7 +171,8 @@ export default function MessageBubble({
             )}
             {content && (
               <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
+                remarkPlugins={[remarkGfm, remarkMath]}
+                rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}
                 components={markdownComponents}
               >
                 {normalized}

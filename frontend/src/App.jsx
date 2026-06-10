@@ -4,6 +4,7 @@ import { Toaster } from 'sonner'
 
 import LoginPage from '@/pages/LoginPage'
 import ChatPage from '@/pages/ChatPage'
+import ErrorBoundary from '@/components/ErrorBoundary'
 
 function RequireAuth({ children }) {
   const token = useSelector((s) => s.auth.token)
@@ -20,7 +21,9 @@ export default function App() {
           path="/"
           element={
             <RequireAuth>
-              <ChatPage />
+              <ErrorBoundary>
+                <ChatPage />
+              </ErrorBoundary>
             </RequireAuth>
           }
         />

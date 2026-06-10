@@ -16,7 +16,7 @@ export default function ChatInput({
   sending,
   webSearchEnabled,
   onWebSearchChange,
-  attachments,
+  attachments = [],
   onRemoveAttachment,
   onRetryAttachment,
   onSelectFile,

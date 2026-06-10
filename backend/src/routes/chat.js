@@ -190,6 +190,7 @@ router.get('/stream', authRequired, ah(async (req, res) => {
 
     registerStream(conversationId, controller)
 
+    //构建上下文
     messages = await buildChatContext({
       conversationId,
       assistantMessageId,
@@ -240,6 +241,7 @@ router.get('/stream', authRequired, ah(async (req, res) => {
     } else {
       let currentMessages = messages
       for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+        //调用LLM
         const { text: roundText, toolCalls, finishReason } = await streamLLM({
           messages: currentMessages,
           tools: buildToolSchemas({ webSearch }),
@@ -292,16 +294,25 @@ router.get('/stream', authRequired, ah(async (req, res) => {
           )
         )
 
+        //即使已经abort()，chat.js还是会继续走完for循环，直到所有工具调用结果处理完为止 
+        //处理工具调用结果
         for (const r of results) {
+          //如果工具调用失败，则记录错误日志
           if (r.error) {
             console.error(`[tool:${r.call.name}] failed:`, r.error, 'args=', r.call.args)
           }
+          //如果工具调用成功，则获取工具调用结果
           const payload = r.error ? { error: r.error } : r.result
+          //获取工具调用结果
           const entry = toolCallTrace.find((t) => t.id === r.call.id)
+          //如果工具调用结果存在，则更新工具调用结果
           if (entry) {
+            //如果工具调用失败，则更新工具调用结果为失败
             entry.status = r.error ? 'failed' : 'done'
+            //如果工具调用成功，则更新工具调用结果为成功
             entry.result = payload
           }
+          //发送工具调用结果
           send('tool_result', {
             id: r.call.id,
             name: r.call.name,
@@ -309,7 +320,8 @@ router.get('/stream', authRequired, ah(async (req, res) => {
             status: r.error ? 'failed' : 'done',
           })
 
-          // 把工具结果加回上下文，供下一轮 LLM 使用
+          // 把工具结果加回上下文，供下一轮 LLM 使用 
+          //currentMessages是上下文
           currentMessages.push({
             role: 'tool',
             tool_call_id: r.call.id,

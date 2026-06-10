@@ -3,7 +3,9 @@
  * 浏览器 EventSource 不支持自定义 Authorization 头，因此我们手动解析 text/event-stream。
  */
 export async function streamSSE({ url, token, onEvent, signal }) {
+  //传入url，token，signal，headers
   const resp = await fetch(url, {
+    //配置fetch请求
     method: 'GET',
     signal,
     headers: token ? { Authorization: `Bearer ${token}` } : {},

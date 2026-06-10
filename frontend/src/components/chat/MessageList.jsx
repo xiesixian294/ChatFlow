@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 
 import MessageBubble from '@/components/chat/MessageBubble'
+import ErrorBoundary from '@/components/ErrorBoundary'
 
 const ESTIMATE_SIZE = 120
 const GAP = 24
@@ -70,12 +71,21 @@ export default function MessageList({ messages, sending }) {
               className="absolute top-0 left-0 w-full box-border"
               style={{ transform: `translateY(${virtualItem.start}px)` }}
             >
-              <MessageBubble
-                role={m.role}
-                content={m.content}
-                attachments={m.attachments}
-                toolCalls={m.toolCalls}
-              />
+              <ErrorBoundary
+                resetKey={m.content}
+                fallback={
+                  <div className="text-xs text-muted-foreground italic px-1 py-2">
+                    这条消息渲染出错了，刷新后通常可恢复。
+                  </div>
+                }
+              >
+                <MessageBubble
+                  role={m.role}
+                  content={m.content}
+                  attachments={m.attachments}
+                  toolCalls={m.toolCalls}
+                />
+              </ErrorBoundary>
             </div>
           )
         })}

@@ -17,6 +17,7 @@ import ChatInput from '@/components/chat/ChatInput'
 
 const TITLE_MAX = 30
 
+//默认会话状态，每一个会话都有一个默认状态
 const DEFAULT_CONV_STATE = {
   messages: [],
   sending: false,
@@ -77,10 +78,10 @@ export default function ChatPage() {
     if (!convId) return
     setConvState((prev) => {
       const current = prev[convId] ?? DEFAULT_CONV_STATE
-      const next =
-        typeof updater === 'function'
-          ? updater(current)
-          : { ...current, ...updater }
+      const patch = typeof updater === 'function' ? updater(current) : updater
+      // 函数式 updater 与对象 updater 一律按「局部补丁」合并进 current，
+      // 避免只返回部分字段时把 messages/input 等其它字段丢成 undefined。
+      const next = { ...current, ...patch }
       const updated = { ...prev, [convId]: next }
       convStateRef.current = updated
       return updated
@@ -411,48 +412,73 @@ export default function ChatPage() {
     }
   }
 
+  //用户点击停止按钮的时候会触发这个函数
   async function handleStop() {
     if (!activeId) return
     await api
+      //发送取消请求
       .post('/chat/cancel', { conversationId: activeId })
       .catch(() => { })
+    //取消请求
     streamRefs.current.get(activeId)?.abort()
+    //删除流引用
     streamRefs.current.delete(activeId)
+    //更新会话状态为发送完成
     updateConvState(activeId, { sending: false })
+    //停止轮询
     stopPolling(activeId)
+    //加载会话消息
     await loadMessages(activeId)
   }
 
+  //用户点击发送按钮的时候会触发这个函数
   async function handleSend() {
     const content = input.trim()
+    //过滤出所有状态为ready的附件
     const readyAttachments = attachments.filter((a) => a.status === 'ready')
+    //过滤出所有状态为uploading或parsing的附件
     const hasPending = attachments.some(
       (a) => a.status === 'uploading' || a.status === 'parsing'
     )
 
+    //如果正在发送或者有未完成的附件，则返回
     if (sending || hasPending) return
+    //如果输入内容为空且没有ready附件，则返回
     if (!content && !readyAttachments.length) return
 
+    //获取当前会话id
     let convId = activeId
+    //获取当前会话的聊天记录
+    //最初是默认状态，每一个id都有自己的状态，通过getConvState(convStateRef.current, convId)获取
     const convMessages = getConvState(convStateRef.current, convId).messages
+    //判断是否是第一次发送消息
     const isFirstMessage = convMessages.length === 0
 
+    //当前会话id不存在，则创建一个新会话
     if (!convId) {
+      //truncateTitle(content)截取内容的前30个字符作为标题
+      //发送新建会话请求
       const { data } = await api.post('/conversations', {
         title: truncateTitle(content),
       })
+      //新建对话的响应数据里面会有会话id
       convId = data.id
+      //设置当前会话id
       setActiveId(convId)
+      //更新会话状态，会话状态里面有messages，input，attachments，sending，webSearchEnabled
       updateConvState(convId, DEFAULT_CONV_STATE)
-      await loadConversations()
-    } else if (isFirstMessage) {
-      updateLocalTitle(
-        convId,
-        content || readyAttachments[0]?.name || '新对话'
-      )
+      //加载会话列表
+      await loadConversations()//获取会话列表
     }
 
+    //如果当前会话是第一次发送消息，则更新本地会话标题
+    if (isFirstMessage) {
+      updateLocalTitle(convId, content || readyAttachments[0]?.name || '新对话')
+    }
+
+    //获取所有ready附件的fileId
     const attachmentIds = readyAttachments.map((a) => a.fileId)
+    //获取所有ready附件的显示信息
     const displayAttachments = readyAttachments.map((a) => ({
       id: a.fileId,
       originalName: a.name,
@@ -460,6 +486,8 @@ export default function ChatPage() {
     }))
     const useWebSearch = getConvState(convStateRef.current, convId).webSearchEnabled
 
+    //基础准备做完了，我们开始发消息，我们先更新一下会话状态
+    //更新会话状态
     updateConvState(convId, {
       input: '',
       attachments: [],
@@ -476,9 +504,16 @@ export default function ChatPage() {
       ],
     })
 
+    //创建一个AbortController，用于取消请求
     const controller = new AbortController()
+    //streamRefs是一个Map，key是会话id，value是AbortController
+    //streamRefs.current.set(convId, controller)将会话id和AbortController关联起来
     streamRefs.current.set(convId, controller)
 
+    //构建SSE请求的URL
+    //conversationId是会话id，content是用户输入的内容，useWebSearch是是否启用联网搜索，attachmentIds是附件id
+    //如果启用联网搜索，则添加webSearch=1
+    //如果附件id不为空，则添加attachmentIds=附件id
     let url = `/api/chat/stream?conversationId=${convId}&content=${encodeURIComponent(content)}`
     if (useWebSearch) {
       url += '&webSearch=1'
@@ -487,34 +522,41 @@ export default function ChatPage() {
       url += `&attachmentIds=${attachmentIds.join(',')}`
     }
 
+    //发送请求同时使用try...catch...finally处理请求的异常
     try {
+      //发送请求
       await streamSSE({
         url,
         token,
         signal: controller.signal,
+        //streamSSE从长连接当中没解析出一个SSE事件，就调用一次这个回调函数onEvent
+        //后端每解析出一个delta 就用send函数发过来，前端就触发一次这个回调函数onEvent
+        //event是事件类型，data是事件数据
         onEvent: (event, data) => {
+          //updataConvState根据convID来更新会话
           updateConvState(convId, (s) => ({
+            //修改message，applyStreamEvent函数在原来的message基础上添加一个
             messages: applyStreamEvent(s.messages, event, data),
           }))
         },
       })
-      await loadMessages(convId)
-      await loadConversations()
+      await loadMessages(convId)//加载会话消息
+      await loadConversations()//加载会话列表
     } catch (err) {
       if (err.name === 'AbortError') {
-        await loadMessages(convId)
+        await loadMessages(convId)//加载会话消息
       } else if (String(err.message).includes('409')) {
-        startPolling(convId)
+        startPolling(convId)//重新开始轮询
       } else {
-        console.error(err)
+        console.error(err)//记录错误日志
         toast.error(err.message || '消息发送失败')
-        await loadMessages(convId)
+        await loadMessages(convId)//加载会话消息
       }
     } finally {
-      streamRefs.current.delete(convId)
+      streamRefs.current.delete(convId)//删除流引用
       if (!pollTimersRef.current.has(convId)) {
-        updateConvState(convId, { sending: false })
-      }
+        updateConvState(convId, { sending: false })//更新会话状态为发送完成 
+      }//如果轮询器没有正在轮询，则更新会话状态为发送完成 
     }
   }
 
@@ -567,3 +609,4 @@ export default function ChatPage() {
     </div>
   )
 }
+
